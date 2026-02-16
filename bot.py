@@ -11,14 +11,12 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 
 DATA_FILE = 'user_groups.json'
 
-# Load existing user groups from JSON
 def load_groups():
     if os.path.exists(DATA_FILE):
         with open(DATA_FILE, 'r') as f:
             return json.load(f)
     return {}
 
-# Save user groups to JSON
 def save_groups(groups):
     with open(DATA_FILE, 'w') as f:
         json.dump(groups, f)
@@ -31,25 +29,19 @@ async def on_ready():
 async def startgroup(ctx):
     user_id = str(ctx.author.id)
     guild = ctx.guild
-    
-    # Load current groups
     groups = load_groups()
     
-    # Check if user already has a group
     if user_id in groups:
         existing_cat = guild.get_channel(int(groups[user_id]))
         if existing_cat and existing_cat.category:
             await ctx.send(f"You already have a group: **{existing_cat.name}**. Delete it first if needed.")
             return
         else:
-            # Clean up stale entry
             del groups[user_id]
             save_groups(groups)
     
-    # Create unique category name
     group_name = f"Group-{ctx.author.display_name}-{ctx.author.discriminator}"
     
-    # Permission overwrites: only invoker can manage, @everyone denied
     overwrites = {
         guild.default_role: discord.PermissionOverwrite(read_messages=False, view_channel=False),
         ctx.author: discord.PermissionOverwrite(
@@ -58,14 +50,11 @@ async def startgroup(ctx):
         )
     }
     
-    # Create the private category
     category = await guild.create_category(group_name, overwrites=overwrites, reason=f"Private group for {ctx.author}")
     
-    # Save the mapping
     groups[user_id] = str(category.id)
     save_groups(groups)
     
-    # Create sample channels (optional; user can manage/add more)
     text_overwrites = {
         guild.default_role: discord.PermissionOverwrite(read_messages=False),
         ctx.author: discord.PermissionOverwrite(read_messages=True, send_messages=True)
@@ -78,7 +67,7 @@ async def startgroup(ctx):
     await guild.create_text_channel("general", category=category, overwrites=text_overwrites)
     await guild.create_voice_channel("chat", category=category, overwrites=voice_overwrites)
     
-    await ctx.send(f"✅ **{group_name}** created! You have full manage permissions (create/delete channels, delete category).\nIt’s private to you only.")
+    await ctx.send(f"✅ **{group_name}** created!")
 
 @bot.command()
 @commands.has_permissions(administrator=True)
