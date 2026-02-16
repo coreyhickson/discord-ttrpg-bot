@@ -2,9 +2,23 @@ import discord
 from discord.ext import commands
 import json
 import os
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
 from dotenv import load_dotenv
 
 load_dotenv()
+
+class IdleHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"Bot is alive!")
+
+def run_server():
+    port = int(os.environ.get('PORT', 10000))
+    server = HTTPServer(('0.0.0.0', port), IdleHandler)
+    server.serve_forever()
+
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix='!', intents=intents)
@@ -43,10 +57,14 @@ async def startgroup(ctx):
     group_name = f"Group-{ctx.author.display_name}-{ctx.author.discriminator}"
     
     overwrites = {
-        guild.default_role: discord.PermissionOverwrite(read_messages=False, view_channel=False),
+        guild.default_role: discord.PermissionOverwrite(
+            view_channel=False,
+            read_message_history=False
+        ),
         ctx.author: discord.PermissionOverwrite(
             read_messages=True, send_messages=True, manage_channels=True,
-            manage_permissions=True, view_channel=True, connect=True
+            manage_permissions=True, view_channel=True, connect=True,
+            read_message_history=True
         )
     }
     
@@ -55,9 +73,10 @@ async def startgroup(ctx):
     groups[user_id] = str(category.id)
     save_groups(groups)
     
+    # FIXED: Proper child channel overwrites
     text_overwrites = {
-        guild.default_role: discord.PermissionOverwrite(read_messages=False),
-        ctx.author: discord.PermissionOverwrite(read_messages=True, send_messages=True)
+        guild.default_role: discord.PermissionOverwrite(read_messages=False, view_channel=False),
+        ctx.author: discord.PermissionOverwrite(read_messages=True, send_messages=True, view_channel=True)
     }
     voice_overwrites = {
         guild.default_role: discord.PermissionOverwrite(connect=False, view_channel=False),
@@ -67,7 +86,7 @@ async def startgroup(ctx):
     await guild.create_text_channel("general", category=category, overwrites=text_overwrites)
     await guild.create_voice_channel("chat", category=category, overwrites=voice_overwrites)
     
-    await ctx.send(f"✅ **{group_name}** created!")
+    await ctx.send(f"✅ **{group_name}** created! You have full manage permissions.")
 
 @bot.command()
 @commands.has_permissions(administrator=True)
@@ -85,4 +104,6 @@ async def cleangroups(ctx):
     save_groups(groups)
     await ctx.send(f"🧹 Deleted {deleted} groups.")
 
-bot.run(os.getenv('DISCORD_TOKEN'))
+if __name__ == "__main__":
+    threading.Thread(target=run_server, daemon=True).start()
+    bot.run(os.getenv('DISCORD_TOKEN'))
