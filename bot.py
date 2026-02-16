@@ -66,8 +66,17 @@ async def startgroup(ctx):
     save_groups(groups)
     
     # Create sample channels (optional; user can manage/add more)
-    await guild.create_text_channel("general", category=category, sync_permissions=True)
-    await guild.create_voice_channel("chat", category=category, sync_permissions=True)
+    text_overwrites = {
+        guild.default_role: discord.PermissionOverwrite(read_messages=False),
+        ctx.author: discord.PermissionOverwrite(read_messages=True, send_messages=True)
+    }
+    voice_overwrites = {
+        guild.default_role: discord.PermissionOverwrite(connect=False, view_channel=False),
+        ctx.author: discord.PermissionOverwrite(connect=True, speak=True, view_channel=True)
+    }
+    
+    await guild.create_text_channel("general", category=category, overwrites=text_overwrites)
+    await guild.create_voice_channel("chat", category=category, overwrites=voice_overwrites)
     
     await ctx.send(f"✅ **{group_name}** created! You have full manage permissions (create/delete channels, delete category).\nIt’s private to you only.")
 
