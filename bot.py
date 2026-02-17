@@ -50,7 +50,7 @@ async def startgroup(ctx):
     user_status = load_user_status()
     
     if user_id in user_status:
-        await ctx.send("You already have a group! Delete it first if needed.")
+        await ctx.send("You already created a group! Speak to an admin if you need another.")
         return
     
     group_name = f"{ctx.author.display_name}'s TTRPG Group"
